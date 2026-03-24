@@ -1,0 +1,27 @@
+name: Deploy Frontend
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3 # what is this? where did we get it?
+      - run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} # how does it get the secrets?
+      - run: docker build -t omarbahutair/react-test -f Dockerfile.dev . # why run the development build?
+      - run: docker run -e CI=true omarbahutair/react-test npm test # what does -e mean? what does the CI flag do?
+
+      - name: Generate deployment package # is this a job within a job or what?
+        run: zip -r deploy.zip . -x '*.git*' # I have no idea what this is and what it does
+      
+      - name: Deploy to EB
+        uses: einaregilsson/beanstalk-deploy@v18 # is this a docker image from docker hub? and why do we need it?
+        with:
+          application_name: docker-gh
+          environment_name: Dockergh-env # is there a reason for this naming? like a convention?
+          existing_bucket_name: elasticbeanstalk-us-east-1-923445559289 # I think I am going to need to change this to my own bucket name once I setup AWS
+          region: us-east-1 # same thing here I am going to need to change it to middle east most likely
+          version_label: ${{ github.sha }} # don't know what that is
+          deployment_package: deploy.zip # I noticed that it's from a previous step but I don't know what it does nor how the two steps were linked
